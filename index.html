@@ -194,10 +194,48 @@
     }
     .msg .sender { font-weight: 600; font-size: 0.72rem; margin-bottom: 2px; opacity: 0.7; }
 
+    /* ── Stats row ── */
+    .stats-row {
+      display: flex; gap: 8px; width: 100%;
+    }
+    .stat-chip {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 10px; text-align: center;
+    }
+    .stat-chip .val {
+      font-size: 1rem; font-weight: 700; color: var(--gold); display: block;
+    }
+    .stat-chip .lbl {
+      font-size: 0.68rem; color: var(--text-muted); margin-top: 1px; display: block;
+    }
+
+    /* ── Transcript header ── */
+    .transcript-header {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%;
+    }
+    .transcript-header span { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    .clear-btn {
+      font-size: 0.68rem; color: var(--text-muted); background: none;
+      border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+      font-family: inherit; transition: color 0.2s;
+    }
+    .clear-btn:hover { color: var(--red); }
+
+    /* ── Keyboard hint ── */
+    .kbd-hint {
+      font-size: 0.7rem; color: var(--text-muted); text-align: center;
+    }
+    kbd {
+      display: inline-block; padding: 1px 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; font-family: monospace; font-size: 0.75rem;
+    }
+
     /* ── Footer ── */
     .footer-note {
       font-size: 0.72rem; color: var(--text-muted); text-align: center;
-      line-height: 1.5;
+      line-height: 1.8;
     }
     .footer-note a { color: var(--gold); text-decoration: none; }
 
@@ -258,13 +296,38 @@
       <span id="btn-label">Start Call</span>
     </button>
 
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-chip">
+        <span class="val" id="stat-calls">—</span>
+        <span class="lbl">Total Calls</span>
+      </div>
+      <div class="stat-chip">
+        <span class="val" id="stat-avg">—</span>
+        <span class="lbl">Avg Duration</span>
+      </div>
+      <div class="stat-chip">
+        <span class="val" id="stat-last">—</span>
+        <span class="lbl">Last Call</span>
+      </div>
+    </div>
+
     <!-- Transcript -->
+    <div class="transcript-header">
+      <span>TRANSCRIPT</span>
+      <button class="clear-btn" onclick="document.getElementById('transcript').innerHTML=''" id="clear-btn">Clear</button>
+    </div>
     <div class="transcript-box" id="transcript"></div>
+
+    <!-- Keyboard hint -->
+    <p class="kbd-hint">Press <kbd>Space</kbd> to start / end call</p>
 
     <!-- Footer -->
     <p class="footer-note">
-      Powered by <a href="https://retellai.com" target="_blank">Retell AI</a> + GPT-4o<br />
-      Agent ID: <span id="agent-id-display" style="color:var(--gold);font-family:monospace">—</span>
+      Powered by <a href="https://retellai.com" target="_blank">Retell AI</a><br />
+      Model: <span id="model-display" style="color:var(--gold)">—</span> ·
+      Voice: <span id="voice-display" style="color:var(--gold)">—</span><br />
+      Agent: <span id="agent-id-display" style="font-family:monospace;font-size:0.68rem">—</span>
     </p>
 
   </div>
@@ -440,15 +503,37 @@
       }
     };
 
+    // ── Space key shortcut ────────────────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        if (!btn.classList.contains('connecting')) handleCall();
+      }
+    });
+
     // ── Load agent info on page load ─────────────────────────────────────────
     fetch('/agent-info')
       .then(r => r.json())
       .then(d => {
-        if (d.agent_id) {
-          document.getElementById('agent-id-display').textContent = d.agent_id;
-        }
+        if (d.agent_id)  document.getElementById('agent-id-display').textContent = d.agent_id;
+        if (d.model)     document.getElementById('model-display').textContent = d.model;
+        if (d.voice_id)  document.getElementById('voice-display').textContent = d.voice_id;
       })
       .catch(() => {});
+
+    // ── Load call stats ───────────────────────────────────────────────────────
+    async function refreshStats() {
+      try {
+        const s = await fetch('/stats').then(r => r.json());
+        document.getElementById('stat-calls').textContent = s.totalCalls ?? 0;
+        document.getElementById('stat-avg').textContent =
+          s.avgDurationSec > 0 ? `${s.avgDurationSec}s` : '—';
+        document.getElementById('stat-last').textContent = s.lastCall
+          ? new Date(s.lastCall).toLocaleDateString()
+          : 'None';
+      } catch { /* stats unavailable */ }
+    }
+    refreshStats();
   </script>
 </body>
 </html>
