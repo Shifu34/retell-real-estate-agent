@@ -1,14 +1,32 @@
 {
   "name": "retell-real-estate-agent",
   "version": "1.0.0",
-  "description": "Real estate AI voice agent powered by Retell AI",
+  "description": "Real estate AI voice agent built with Retell AI, GPT-4o, and Node.js — browser-based live voice calls with real-time transcription",
   "type": "module",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "setup": "node setup-agent.js"
+    "setup": "node setup-agent.js",
+    "logs": "cat logs/calls.json 2>/dev/null || echo 'No call logs yet. Make a call first.'",
+    "logs:clear": "echo '[]' > logs/calls.json && echo 'Logs cleared.'",
+    "validate": "node -e \"import('./utils/validateEnv.js').then(m => m.validateEnv())\""
   },
+  "keywords": [
+    "retell-ai",
+    "voice-agent",
+    "real-estate",
+    "gpt-4o",
+    "ai",
+    "webrtc",
+    "voice-call",
+    "llm"
+  ],
+  "author": "Shifu34",
+  "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -16,3 +34,4 @@
     "retell-sdk": "^4.6.0"
   }
 }
+
