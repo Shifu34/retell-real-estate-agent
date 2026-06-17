@@ -7,6 +7,7 @@
 
 import 'dotenv/config';
 import Retell from 'retell-sdk';
+import { AGENT_CONFIG } from './config/agent.js';
 
 const API_KEY = process.env.RETELL_API_KEY;
 
@@ -25,26 +26,8 @@ async function setupAgent() {
     // Step 1: Create an LLM (the brain of the agent)
     console.log('  1/2 Creating LLM...');
     const llm = await client.llm.create({
-      model: 'gpt-4o',
-      general_prompt: `You are Aria, a knowledgeable and friendly AI real estate agent assistant. 
-Your job is to help buyers, sellers, and renters with all their real estate needs.
-
-You can help with:
-- Answering questions about property listings, prices, and neighborhoods
-- Explaining the home buying and selling process step by step
-- Discussing mortgage basics and affordability
-- Scheduling property tours and follow-up appointments
-- Qualifying buyer needs (budget, timeline, location preferences, must-haves)
-- Providing market insights and trends
-
-Your personality:
-- Warm, professional, and patient
-- Use simple language, avoid too much jargon
-- Be proactive — ask clarifying questions to understand needs
-- Keep responses concise for voice (2-3 sentences max per turn)
-- Sound natural, like a real human agent would
-
-Start by greeting the caller and asking how you can help them today.`,
+      model: AGENT_CONFIG.model,
+      general_prompt: AGENT_CONFIG.system_prompt,
       general_tools: [],
     });
 
@@ -53,15 +36,15 @@ Start by greeting the caller and asking how you can help them today.`,
     // Step 2: Create the Agent
     console.log('  2/2 Creating Agent...');
     const agent = await client.agent.create({
-      agent_name: 'Aria — Real Estate AI Agent',
+      agent_name: `${AGENT_CONFIG.name} — Real Estate AI Agent`,
       response_engine: {
         type: 'retell-llm',
         llm_id: llm.llm_id,
       },
-      voice_id: '11labs-Adrian',   // Natural, professional male voice
-      voice_speed: 1.0,
-      enable_backchannel: true,     // "mm-hmm", "yeah" during pauses
-      language: 'en-US',
+      voice_id: AGENT_CONFIG.voice_id,
+      voice_speed: AGENT_CONFIG.voice_speed,
+      enable_backchannel: AGENT_CONFIG.enable_backchannel,
+      language: AGENT_CONFIG.language,
     });
 
     console.log(`     ✅ Agent created: ${agent.agent_id}`);
