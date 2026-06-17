@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-validate:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for required files
+        run: |
+          echo "Checking project structure..."
+          test -f server.js        && echo "✅ server.js"
+          test -f setup-agent.js   && echo "✅ setup-agent.js"
+          test -f index.html       && echo "✅ index.html"
+          test -f config/agent.js  && echo "✅ config/agent.js"
+          test -f .env.example     && echo "✅ .env.example"
+          test -f routes/webhook.js && echo "✅ routes/webhook.js"
+          test -f utils/callLogger.js && echo "✅ utils/callLogger.js"
+          echo "All required files present."
+
+      - name: Validate .env.example has required keys
+        run: |
+          grep -q "RETELL_API_KEY" .env.example && echo "✅ RETELL_API_KEY in .env.example"
+          grep -q "RETELL_AGENT_ID" .env.example && echo "✅ RETELL_AGENT_ID in .env.example"
+          grep -q "PORT" .env.example && echo "✅ PORT in .env.example"
+
+      - name: Check .env is gitignored
+        run: |
+          git check-ignore -q .env && echo "✅ .env is properly gitignored" || (echo "❌ .env is NOT gitignored!" && exit 1)
