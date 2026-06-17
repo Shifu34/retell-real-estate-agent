@@ -16,20 +16,14 @@ import Retell from 'retell-sdk';
 import webhookRouter from './routes/webhook.js';
 import { getCallStats } from './utils/callLogger.js';
 import { AGENT_CONFIG } from './config/agent.js';
+import { validateEnv } from './utils/validateEnv.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Validate env ──────────────────────────────────────────────────────────────
-if (!process.env.RETELL_API_KEY || process.env.RETELL_API_KEY === 'your_retell_api_key_here') {
-  console.error('\n❌  RETELL_API_KEY missing. Copy .env.example → .env and fill it in.\n');
-  process.exit(1);
-}
-if (!process.env.RETELL_AGENT_ID || process.env.RETELL_AGENT_ID === 'your_agent_id_here') {
-  console.error('\n❌  RETELL_AGENT_ID missing. Run `npm run setup` first to create your agent.\n');
-  process.exit(1);
-}
+validateEnv();
 
 // ── Init Retell client ────────────────────────────────────────────────────────
 const retell = new Retell({ apiKey: process.env.RETELL_API_KEY });
