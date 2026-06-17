@@ -2,17 +2,23 @@
 
 A fully functional AI voice agent for real estate, built with **Retell AI**, **GPT-4o**, and **Node.js**. Users can have a live, two-way voice conversation directly from the browser — no phone number required.
 
-![Agent UI](https://img.shields.io/badge/Status-Live-22C55E?style=flat-square) ![Retell AI](https://img.shields.io/badge/Retell_AI-Integrated-C9A84C?style=flat-square) ![GPT-4o](https://img.shields.io/badge/LLM-GPT--4o-412991?style=flat-square) ![Node.js](https://img.shields.io/badge/Backend-Node.js-339933?style=flat-square)
+![CI](https://github.com/Shifu34/retell-real-estate-agent/actions/workflows/ci.yml/badge.svg)
+![Node](https://img.shields.io/badge/Node.js-%3E%3D18-339933?style=flat-square&logo=node.js)
+![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
+![Retell AI](https://img.shields.io/badge/Retell_AI-Integrated-C9A84C?style=flat-square)
+![GPT-4o](https://img.shields.io/badge/LLM-GPT--4o-412991?style=flat-square)
 
 ---
 
 ## 🎯 What This Does
 
-- **Browser-based voice call** — click a button and talk to the AI agent instantly
-- **Real estate–trained AI** — the agent (named "Aria") answers property questions, qualifies buyers, discusses pricing, and books tours
-- **Live transcript** — the conversation is transcribed word-by-word in real time
-- **Secure token flow** — API keys stay on the server; the frontend never sees them
-- **One-command agent creation** — runs a setup script that calls the Retell API and creates the LLM + agent automatically
+- **Browser-based voice call** — click a button (or press Space) and talk to the AI agent instantly via WebRTC
+- **Real estate–trained AI** — the agent ("Aria") answers property questions, qualifies buyers, discusses pricing, and books tours
+- **Live real-time transcript** — conversation is transcribed word-by-word as you speak
+- **Call history & stats** — every call is logged; view totals, average duration, and per-call transcripts
+- **Webhook integration** — Retell posts call lifecycle events (started, ended, analyzed) to your server
+- **Secure token flow** — API keys stay on the server; the frontend only ever gets a short-lived 30-second token
+- **One-command setup** — `npm run setup` hits the Retell API and creates the LLM + agent automatically
 
 ---
 
@@ -23,9 +29,40 @@ A fully functional AI voice agent for real estate, built with **Retell AI**, **G
 | AI Voice Platform | [Retell AI](https://retellai.com) |
 | Language Model | GPT-4o (via Retell) |
 | Voice Synthesis | ElevenLabs (via Retell) |
-| Backend | Node.js + Express |
-| Frontend | Vanilla HTML/CSS/JS |
-| SDK | `retell-sdk` (server) + `retell-client-js-sdk` (browser) |
+| Backend | Node.js 20 + Express |
+| Frontend | Vanilla HTML / CSS / JS (no framework) |
+| Server SDK | `retell-sdk` |
+| Browser SDK | `retell-client-js-sdk` (loaded from CDN) |
+| CI/CD | GitHub Actions |
+
+---
+
+## 📁 Project Structure
+
+```
+retell-real-estate-agent/
+├── server.js              # Express server — entry point
+├── setup-agent.js         # One-time Retell agent creation script
+├── index.html             # Frontend — call button, visualizer, transcript
+│
+├── config/
+│   └── agent.js           # Agent name, voice, model, system prompt
+│
+├── routes/
+│   ├── webhook.js         # POST /webhook — Retell call lifecycle events
+│   └── calls.js           # GET /calls — call history REST API
+│
+├── utils/
+│   ├── callLogger.js      # Read/write logs/calls.json
+│   └── validateEnv.js     # Startup env var validation
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml         # GitHub Actions CI pipeline
+│
+├── .env.example           # Environment variable template
+└── package.json
+```
 
 ---
 
@@ -34,7 +71,7 @@ A fully functional AI voice agent for real estate, built with **Retell AI**, **G
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/retell-real-estate-agent.git
+git clone https://github.com/Shifu34/retell-real-estate-agent.git
 cd retell-real-estate-agent
 ```
 
@@ -44,21 +81,19 @@ cd retell-real-estate-agent
 npm install
 ```
 
-### 3. Configure environment variables
+### 3. Set up environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and add your Retell API key:
+Edit `.env`:
 
 ```env
-RETELL_API_KEY=key_xxxxxxxxxxxxxxxxxxxx
-RETELL_AGENT_ID=          # leave blank for now
+RETELL_API_KEY=key_xxxxxxxxxxxxxxxxxxxx   # from dashboard.retellai.com → Settings → API Keys
+RETELL_AGENT_ID=                          # leave blank for now
 PORT=3000
 ```
-
-> Get your API key from [dashboard.retellai.com](https://dashboard.retellai.com) → Settings → API Keys
 
 ### 4. Create the agent (run once)
 
@@ -66,10 +101,11 @@ PORT=3000
 npm run setup
 ```
 
-This automatically:
-- Creates a Retell LLM configured with a real estate system prompt
-- Creates an agent ("Aria") with a natural-sounding voice
-- Prints the `agent_id` — paste it into your `.env`
+This calls the Retell API to create:
+- A **Retell LLM** configured with the real estate system prompt from `config/agent.js`
+- An **Agent** ("Aria") with ElevenLabs voice and GPT-4o
+
+Copy the printed `RETELL_AGENT_ID` into your `.env`.
 
 ### 5. Start the server
 
@@ -77,52 +113,74 @@ This automatically:
 npm run dev
 ```
 
-Open **http://localhost:3000** and click **Start Call** 🎙
+Open **http://localhost:3000** — click **Start Call** or press **Space** 🎙
 
 ---
 
-## 📁 Project Structure
+## 🔐 Architecture — How the Web Call Works
 
 ```
-├── server.js          # Express backend — serves frontend & creates call tokens
-├── setup-agent.js     # One-time script to create the Retell LLM + Agent via API
-├── index.html         # Frontend UI — call button, visualizer, live transcript
-├── .env.example       # Environment variable template
-└── package.json
+Browser (index.html)              Server (Express)              Retell AI
+        │                               │                           │
+        │─── POST /create-web-call ────>│                           │
+        │                               │── createWebCall(agentId) >│
+        │                               │<── { access_token }  ─────│
+        │<── { access_token } ──────────│                           │
+        │                               │                           │
+        │── retellClient.startCall(token) ─────────────────────────>│
+        │<════════════ Live Audio (WebRTC) ════════════════════════>│
+        │<──── update events (transcript, turntaking) ─────────────│
+        │                               │                           │
+        │                               │<─ POST /webhook (events) ─│
+        │                               │   (call_started,          │
+        │                               │    call_ended,            │
+        │                               │    call_analyzed)         │
 ```
+
+> The `access_token` expires in **30 seconds**. A new one is fetched on every call start.
 
 ---
 
-## 🔐 How the Web Call Works
+## 🌐 API Endpoints
 
-```
-Browser                    Server (Express)           Retell AI
-  │                              │                        │
-  │── POST /create-web-call ────>│                        │
-  │                              │── createWebCall() ────>│
-  │                              │<── { access_token } ───│
-  │<── { access_token } ─────────│                        │
-  │                              │                        │
-  │── retellClient.startCall(access_token) ──────────────>│
-  │<══════════ Live Audio Stream (WebRTC) ════════════════>│
-```
-
-The access token expires in **30 seconds** — it is fetched fresh every time a call starts.
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/create-web-call` | Generate a Retell access token for a browser call |
+| `GET` | `/agent-info` | Returns agent name, role, model, voice, and ID |
+| `GET` | `/stats` | Quick call stats (total, avg duration, last call) |
+| `GET` | `/calls` | All call log entries (supports `?limit` and `?event` filters) |
+| `GET` | `/calls/stats` | Detailed call statistics |
+| `GET` | `/calls/:callId` | All log entries for a specific call |
+| `POST` | `/webhook` | Retell webhook receiver (configure in dashboard) |
 
 ---
 
-## 🤖 Agent Personality & Capabilities
+## 🤖 Customising the Agent
 
-The agent is prompted as **Aria**, a professional real estate AI assistant that can:
+All agent settings live in [`config/agent.js`](./config/agent.js):
 
-- Answer questions about listings, pricing, and neighborhoods
-- Explain the buying/selling process
-- Discuss mortgage basics and affordability
-- Qualify leads (budget, timeline, preferences)
-- Schedule property tours
-- Provide market insights
+```js
+export const AGENT_CONFIG = {
+  name: 'Aria',
+  voice_id: '11labs-Adrian',   // change voice here
+  model: 'gpt-4o',             // change LLM here
+  system_prompt: `...`,        // edit the full personality & instructions here
+};
+```
 
-The prompt is fully editable in [`setup-agent.js`](./setup-agent.js).
+After changing the config, re-run `npm run setup` to create a new agent with the updated settings.
+
+---
+
+## 📊 Useful npm Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start server with hot-reload |
+| `npm run setup` | Create Retell LLM + Agent via API |
+| `npm run logs` | Print call history JSON |
+| `npm run logs:clear` | Reset call log file |
+| `npm run validate` | Check env vars without starting server |
 
 ---
 
@@ -132,4 +190,4 @@ MIT — free to use, modify, and deploy.
 
 ---
 
-*Built with [Retell AI](https://retellai.com)*
+*Built with [Retell AI](https://retellai.com) · [github.com/Shifu34/retell-real-estate-agent](https://github.com/Shifu34/retell-real-estate-agent)*
