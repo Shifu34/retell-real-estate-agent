@@ -14,6 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Retell from 'retell-sdk';
 import webhookRouter from './routes/webhook.js';
+import callsRouter from './routes/calls.js';
 import { getCallStats } from './utils/callLogger.js';
 import { AGENT_CONFIG } from './config/agent.js';
 import { validateEnv } from './utils/validateEnv.js';
@@ -83,7 +84,7 @@ app.get('/agent-info', (_req, res) => {
 
 /**
  * GET /stats
- * Returns call history stats from the local log file.
+ * Quick stats shortcut (delegates to /calls/stats internally).
  */
 app.get('/stats', async (_req, res) => {
   try {
@@ -93,6 +94,11 @@ app.get('/stats', async (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+/**
+ * /calls — full call history REST API
+ */
+app.use('/calls', callsRouter);
 
 /**
  * POST /webhook
