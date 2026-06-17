@@ -1,0 +1,6 @@
+# Retell AI — Real Estate Voice Agent
+# .gitignore
+
+node_modules/
+.env
+*.log
